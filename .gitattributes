@@ -1,0 +1,14 @@
+# Basic gitattributes file for a Python project
+* text=auto
+
+# Python files
+*.py    text diff=python
+*.pyi   text diff=python
+*.pyw   text diff=python
+
+# Config files
+*.md    text
+*.txt   text
+*.json  text
+*.toml  text
+.gitignore text
