@@ -6,16 +6,25 @@ class SerialX:
     ERROR_PREFIX = "E|"
 
     def __init__(self, port, baud_rate=9600):
-        self.communication = pySerialX.serialx_communication.SerialXCommunication(port, baud_rate, True)
+        self.communication = pySerialX.serialx_communication.SerialXCommunication(
+            port, baud_rate, True
+        )
         """self.supported_types = [
             "bool", "int", "float", "string", "char", "charstring",
             "uint8_t", "uint16_t", "uint32_t", "long", "double"
         ]"""
         self._type_map = {
-            "bool": lambda x: str(x).strip().lower() in ("true", "1", "yes"),
-            "int": int, "float": float, "string": str, "char": str,
-            "charstring": str, "uint8_t": int, "uint16_t": int,
-            "uint32_t": int, "long": int, "double": float,
+            "bool": lambda x: str(x).strip() in ("1", "true", "True"),
+            "int": int,
+            "float": float,
+            "string": str,
+            "char": str,
+            "charstring": str,
+            "uint8_t": int,
+            "uint16_t": int,
+            "uint32_t": int,
+            "long": int,
+            "double": float,
         }
 
     def _read_response(self, command, timeout=5):
@@ -27,7 +36,9 @@ class SerialX:
 
         line = line.strip()
         if line.startswith(self.ERROR_PREFIX):
-            raise ValueError(f"Errore da Arduino: {line[len(self.ERROR_PREFIX):].strip()}")
+            raise ValueError(
+                f"Errore da Arduino: {line[len(self.ERROR_PREFIX) :].strip()}"
+            )
 
         return line
 
@@ -59,18 +70,25 @@ class SerialX:
             line = self._read_response(cmd)
             return self._type_map[tipo](line)
         except ValueError as e:
-            raise ValueError(f"Impossibile convertire '{line}' nel tipo '{tipo}'") from e
+            raise ValueError(
+                f"Impossibile convertire '{line}' nel tipo '{tipo}'"
+            ) from e
 
     def set(self, tipo: str, name: str, value):
         tipo = tipo.lower()
         if not name or not name.strip():
             raise ValueError("Nome non valido")
-
+        if tipo == "bool":
+            if isinstance(value, bool):
+                value = 1 if value else 0
+            elif str(value).lower() in ("true", "1"):
+                value = 1
+            elif str(value).lower() in ("false", "0"):
+                value = 0
         cmd = f"set {tipo} {name} {value}"
-        try:
-            line = self._read_response(cmd)
-        except ValueError as e:
-            raise ValueError(f"Impossibile convertire '{line}' nel tipo '{tipo}'") from e
+
+        line = self._read_response(cmd)
+        return line
 
     def run(self, name: str):
         if not name or not name.strip():
@@ -86,3 +104,4 @@ class SerialX:
 
     def close(self):
         self.communication.close()
+

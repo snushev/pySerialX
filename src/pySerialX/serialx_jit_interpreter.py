@@ -4,10 +4,12 @@ This module include two decoders for help and info commands, which are used to d
 
 from dataclasses import dataclass, field
 
+
 @dataclass
 class TypeInfo:
     code: str
     enabled: bool = False
+
 
 @dataclass
 class InfoData:
@@ -17,6 +19,7 @@ class InfoData:
     serialx_jit_version: str
     type_supported: dict[str, "TypeInfo"]
 
+
 class SerialXInterpreter:
     JIT_COMMAND_CODES = {
         "accessKey": "akey",
@@ -24,7 +27,7 @@ class SerialXInterpreter:
         "info": "i",
         "get": "g",
         "set": "s",
-        "run": "r"
+        "run": "r",
     }
 
     JIT_TYPE_CODES = {
@@ -38,7 +41,7 @@ class SerialXInterpreter:
         "uint16_t": "w",
         "uint32_t": "d",
         "long": "l",
-        "double": "D"
+        "double": "D",
     }
 
     # JIT Interpretation
@@ -60,11 +63,12 @@ class SerialXInterpreter:
         elif base == "getvirtual":
             return SerialXInterpreter._encode_get(parts, virtual=True)
         elif base == "run":
-            return f"{SerialXInterpreter.JIT_COMMAND_CODES['run']} {' '.join(parts[1:])}"
+            return (
+                f"{SerialXInterpreter.JIT_COMMAND_CODES['run']} {' '.join(parts[1:])}"
+            )
         elif base in SerialXInterpreter.JIT_COMMAND_CODES:
             return SerialXInterpreter.JIT_COMMAND_CODES[base]
         return cmd
-
 
     @staticmethod
     def _encode_set(parts: list[str]) -> str | None:
@@ -74,7 +78,7 @@ class SerialXInterpreter:
 
         tipo = parts[1]
         name = parts[2]
-        valore = " ".join(parts[3:])
+        valore = parts[3] if len(parts) == 4 else " ".join(str(x) for x in parts[3:])
 
         type_code = SerialXInterpreter.JIT_TYPE_CODES.get(tipo)
         if not type_code:
@@ -83,20 +87,23 @@ class SerialXInterpreter:
 
         try:
             if tipo == "bool":
-                v = valore.lower()
-                if v == "true":
-                    valore = 1
-                elif v == "false":
-                    valore = 0
-                elif v in ("1", "0"):
-                    valore = int(v)
+                if isinstance(valore, bool):
+                    valore = 1 if valore else 0
                 else:
-                    raise ValueError("Bool deve essere true/false o 0/1")
+                    v = str(valore).strip().lower()
+                    if v in ("true", "1"):
+                        valore = 1
+                    elif v in ("false", "0"):
+                        valore = 0
+                    else:
+                        raise ValueError("Bool deve essere true/false o 0/1")
         except ValueError as e:
             print(f"Valore non valido per {name}: {valore} ({e})")
             return None
 
-        return f"{SerialXInterpreter.JIT_COMMAND_CODES['set']}{type_code} {name} {valore}"
+        return (
+            f"{SerialXInterpreter.JIT_COMMAND_CODES['set']}{type_code} {name} {valore}"
+        )
 
     @staticmethod
     def _encode_get(parts: list[str], virtual: bool = False) -> str | None:
@@ -156,7 +163,10 @@ class SerialXInterpreter:
         if line:
             supported_str = line.strip()
 
-        types = {name: TypeInfo(code) for name, code in SerialXInterpreter.JIT_TYPE_CODES.items()}
+        types = {
+            name: TypeInfo(code)
+            for name, code in SerialXInterpreter.JIT_TYPE_CODES.items()
+        }
         for t in types.values():
             t.enabled = t.code in supported_str
 
@@ -202,22 +212,24 @@ class SerialXInterpreter:
                 continue
 
             tipo_nome = next(
-                name for name, code in SerialXInterpreter.JIT_TYPE_CODES.items()
+                name
+                for name, code in SerialXInterpreter.JIT_TYPE_CODES.items()
                 if code == tipo
             )
-            #name, value = parts[0], parts[1]
+            # name, value = parts[0], parts[1]
             name = parts[0]
 
-            variabili.append({
-                "name": name,
-                "type": tipo_nome,
-                #"value": value,
-                "can_set": flag == "x",
-                "unrecognized": False,
-            })
+            variabili.append(
+                {
+                    "name": name,
+                    "type": tipo_nome,
+                    # "value": value,
+                    "can_set": flag == "x",
+                    "unrecognized": False,
+                }
+            )
 
         return {"variables": variabili, "functions": funzioni}
-
 
 
 """
@@ -310,3 +322,4 @@ class SerialXInterpreter:
             
                     return jit_command
                     """
+
